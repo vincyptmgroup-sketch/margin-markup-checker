@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>*,*::before,*::after{box-sizing:border-box}body{margin:0}[hidden]{display:none!important}</style>
+<title>Margin vs. Markup Checker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one narrow column — inputs, two side-by-side results, a bar diagram that shows why they differ, a lookup table. */
+:root {
+  --bg: #f3f6f5;
+  --surface: #ffffff;
+  --ink: #15302b;
+  --muted: #5b6f6a;
+  --line: #d5dfdc;
+  --margin: #0f7a68;      /* margin = profit ÷ price */
+  --margin-soft: #d4ece6;
+  --markup: #b5610e;      /* markup = profit ÷ cost */
+  --markup-soft: #f6e3cf;
+  --cost: #c3cfcc;
+  --loss: #b4323a;
+  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1716; --surface: #172220; --ink: #e3ecea; --muted: #94a7a2; --line: #2a3a37;
+    --margin: #4cc7af; --margin-soft: #183a34; --markup: #f0a35a; --markup-soft: #3d2a17;
+    --cost: #3a4b48; --loss: #f07a80; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1716; --surface: #172220; --ink: #e3ecea; --muted: #94a7a2; --line: #2a3a37;
+  --margin: #4cc7af; --margin-soft: #183a34; --markup: #f0a35a; --markup-soft: #3d2a17;
+  --cost: #3a4b48; --loss: #f07a80; color-scheme: dark;
+}
+
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--font-body); font-size: 15px; line-height: 1.5;
+}
+.wrap {
+  max-width: 760px; margin: 0 auto;
+  padding-block: 40px 56px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 28px;
+}
+h1 {
+  font-family: var(--font-display); font-weight: 700;
+  font-size: clamp(1.9rem, 5vw, 2.6rem); line-height: 1.05; margin: 0;
+  letter-spacing: -0.01em; text-wrap: balance;
+}
+h1 .a { color: var(--margin); }
+h1 .b { color: var(--markup); }
+.lede { margin: 10px 0 0; color: var(--muted); max-width: 60ch; }
+h2 {
+  font-family: var(--font-display); font-weight: 500; font-size: 1.15rem; margin: 0;
+  text-wrap: balance;
+}
+.label {
+  font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted);
+}
+.num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+/* Inputs */
+.inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.field { display: grid; gap: 6px; }
+.field label { font-weight: 600; font-size: 0.9rem; }
+.money {
+  display: flex; align-items: center; background: var(--surface);
+  border: 1.5px solid var(--line); border-radius: 10px; padding: 0 14px;
+  transition: border-color .15s;
+}
+.money:focus-within { border-color: var(--ink); }
+.money span { font-family: var(--font-mono); color: var(--muted); font-size: 1.2rem; }
+.money input {
+  flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--ink);
+  font-family: var(--font-mono); font-size: 1.5rem; padding: 12px 6px;
+}
+.money input::-webkit-outer-spin-button, .money input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.money input[type=number] { -moz-appearance: textfield; }
+.profitline { grid-column: 1 / -1; color: var(--muted); font-size: 0.92rem; }
+.profitline strong { color: var(--ink); }
+.profitline.isloss strong { color: var(--loss); }
+
+/* Results */
+.results { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.card {
+  background: var(--surface); border-radius: 14px; padding: 20px;
+  border-top: 5px solid var(--c); display: grid; gap: 10px; align-content: start;
+}
+.card.m { --c: var(--margin); }
+.card.k { --c: var(--markup); }
+.card .big {
+  font-family: var(--font-display); font-weight: 700; color: var(--c);
+  font-size: clamp(2.4rem, 8vw, 3.4rem); line-height: 1; font-variant-numeric: tabular-nums;
+}
+.card .big.isloss { color: var(--loss); }
+.formula { font-family: var(--font-mono); font-size: 0.85rem; color: var(--muted); overflow-wrap: anywhere; }
+.formula b { color: var(--ink); font-weight: 500; }
+.card p { margin: 0; font-size: 0.9rem; color: var(--muted); }
+.card p em { font-style: normal; color: var(--ink); font-weight: 600; }
+
+/* Diagram */
+.diagram { background: var(--surface); border-radius: 14px; padding: 20px; display: grid; gap: 18px; }
+.diagram > p { margin: 0; color: var(--muted); font-size: 0.92rem; max-width: 62ch; }
+.row { display: grid; gap: 6px; }
+.row .head { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 0.88rem; }
+.row .head strong { font-weight: 600; }
+.track { position: relative; height: 34px; }
+.seg {
+  position: absolute; top: 0; bottom: 0; display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-mono); font-size: 0.78rem; white-space: nowrap; overflow: hidden;
+  transition: left .25s ease, width .25s ease;
+}
+.seg.cost { background: var(--cost); color: var(--ink); border-radius: 6px 0 0 6px; }
+.seg.profit-m { background: var(--margin); color: var(--surface); border-radius: 0 6px 6px 0; }
+.seg.profit-k { background: var(--markup); color: var(--surface); border-radius: 0 6px 6px 0; }
+.base {
+  position: absolute; top: -4px; bottom: -4px; border: 2px dashed var(--c); border-radius: 8px; pointer-events: none;
+  transition: left .25s ease, width .25s ease;
+}
+.row.m .base { --c: var(--margin); }
+.row.k .base { --c: var(--markup); }
+.row .note { font-size: 0.82rem; color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { .seg, .base { transition: none; } }
+
+/* Table */
+.lookup { display: grid; gap: 10px; }
+.tablewrap { overflow-x: auto; background: var(--surface); border-radius: 14px; }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th, td { padding: 9px 16px; text-align: right; font-family: var(--font-mono); font-size: 0.9rem; }
+th { font-family: var(--font-body); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--line); }
+th:first-child, td:first-child { text-align: left; }
+td.mc { color: var(--margin); }
+td.kc { color: var(--markup); }
+tbody tr + tr td { border-top: 1px solid var(--line); }
+tr.near td { background: var(--margin-soft); }
+td.mult { color: var(--muted); }
+
+.err { color: var(--loss); font-size: 0.88rem; min-height: 1.3em; margin: 0; grid-column: 1 / -1; }
+
+@media (max-width: 560px) {
+  .inputs, .results { grid-template-columns: 1fr; }
+  .wrap { padding-block: 28px 40px; gap: 22px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Same profit. <span class="a">Margin</span> and <span class="b">markup</span> just divide by different things.</h1>
+    <p class="lede">Enter what an item costs you and what you sell it for. Margin divides your profit by the selling price. Markup divides it by the cost. That is why they never match.</p>
+  </header>
+
+  <section class="inputs" aria-label="Prices">
+    <div class="field">
+      <label for="cost">Cost</label>
+      <div class="money"><span aria-hidden="true">RM</span><input id="cost" type="number" inputmode="decimal" min="0" step="0.01" value="60"></div>
+    </div>
+    <div class="field">
+      <label for="price">Selling price</label>
+      <div class="money"><span aria-hidden="true">RM</span><input id="price" type="number" inputmode="decimal" min="0" step="0.01" value="100"></div>
+    </div>
+    <p class="profitline" id="profitline">Gross profit per unit: <strong class="num" id="profit">RM40.00</strong></p>
+    <p class="err" id="err" role="status"></p>
+  </section>
+
+  <section class="results" aria-live="polite">
+    <article class="card m">
+      <span class="label">Gross margin</span>
+      <div class="big" id="marginOut">40.0%</div>
+      <div class="formula" id="marginF">profit ÷ price</div>
+      <p>Of every ringgit a customer pays, <em id="marginCents">40 sen</em> is yours to keep before overheads.</p>
+    </article>
+    <article class="card k">
+      <span class="label">Markup</span>
+      <div class="big" id="markupOut">66.7%</div>
+      <div class="formula" id="markupF">profit ÷ cost</div>
+      <p>You add <em id="markupCents">67 sen</em> on top of every ringgit the item costs you.</p>
+    </article>
+  </section>
+
+  <section class="diagram" aria-label="Diagram of margin and markup">
+    <h2>One profit, two yardsticks</h2>
+    <p>The coloured block is the same profit in both bars. The dashed outline is what it gets divided by.</p>
+    <div class="row m">
+      <div class="head"><strong>Margin measures against the selling price</strong><span class="num" id="mHead"></span></div>
+      <div class="track" id="trackM">
+        <div class="seg cost" id="mCost"></div><div class="seg profit-m" id="mProfit"></div><div class="base" id="mBase"></div>
+      </div>
+    </div>
+    <div class="row k">
+      <div class="head"><strong>Markup measures against the cost</strong><span class="num" id="kHead"></span></div>
+      <div class="track" id="trackK">
+        <div class="seg cost" id="kCost"></div><div class="seg profit-k" id="kProfit"></div><div class="base" id="kBase"></div>
+      </div>
+    </div>
+    <p class="note" id="diagNote"></p>
+  </section>
+
+  <section class="lookup">
+    <h2>Quick conversion</h2>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Target margin</th><th>Markup needed</th><th>Price = cost ×</th></tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <p class="note" style="margin:0;color:var(--muted);font-size:0.85rem">Markup = margin ÷ (1 − margin). Margin = markup ÷ (1 + markup). The highlighted row is closest to your numbers.</p>
+  </section>
+</div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const costEl = $('cost'), priceEl = $('price');
+  const money = n => (n < 0 ? '−RM' : 'RM') +Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const pct = n => (n < 0 ? '−' : '') + Math.abs(n * 100).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%';
+  const cents = n => Math.round(Math.abs(n) * 100) + ' sen';
+
+  const TABLE = [0.10, 0.20, 0.25, 0.30, 0.333333, 0.40, 0.50, 0.60, 0.75];
+  function renderTable(margin) {
+    let nearest = -1, best = Infinity;
+    if (Number.isFinite(margin)) TABLE.forEach((m, i) => { const d = Math.abs(m - margin); if (d < best) { best = d; nearest = i; } });
+    $('tbody').innerHTML = TABLE.map((m, i) => {
+      const k = m / (1 - m);
+      return `<tr class="${i === nearest ? 'near' : ''}"><td class="mc">${pct(m)}</td><td class="kc">${pct(k)}</td><td class="mult">${(1 / (1 - m)).toFixed(2)}</td></tr>`;
+    }).join('');
+  }
+
+  function place(el, left, width, text) {
+    el.style.left = left + '%'; el.style.width = Math.max(width, 0) + '%';
+    el.textContent = width > 9 ? text : '';
+  }
+
+  function update() {
+    const cost = parseFloat(costEl.value), price = parseFloat(priceEl.value);
+    const err = $('err');
+    const valid = Number.isFinite(cost) && Number.isFinite(price) && cost >= 0 && price >= 0;
+    if (!valid) {
+      err.textContent = 'Enter a cost and a selling price of zero or more.';
+      return;
+    }
+    err.textContent = '';
+    const profit = price - cost;
+    const margin = price > 0 ? profit / price : NaN;
+    const markup = cost > 0 ? profit / cost : NaN;
+    const loss = profit < 0;
+
+    $('profit').textContent = money(profit) + (loss ? ' (a loss)' : '');
+    $('profitline').classList.toggle('isloss', loss);
+
+    const mOut = $('marginOut'), kOut = $('markupOut');
+    mOut.textContent = Number.isFinite(margin) ? pct(margin) : '—';
+    kOut.textContent = Number.isFinite(markup) ? pct(markup) : '—';
+    mOut.classList.toggle('isloss', loss); kOut.classList.toggle('isloss', loss);
+
+    $('marginF').innerHTML = Number.isFinite(margin)
+      ? `<b>${money(profit)}</b> ÷ <b>${money(price)}</b> price` : 'Needs a selling price above RM0';
+    $('markupF').innerHTML = Number.isFinite(markup)
+      ? `<b>${money(profit)}</b> ÷ <b>${money(cost)}</b> cost` : 'Needs a cost above RM0';
+    $('marginCents').textContent = Number.isFinite(margin) ? (loss ? 'minus ' : '') + cents(margin) : '—';
+    $('markupCents').textContent = Number.isFinite(markup) ? (loss ? 'minus ' : '') + cents(markup) : '—';
+    $('marginCents').parentElement.firstChild.textContent = loss ? 'Of every ringgit a customer pays, you lose ' : 'Of every ringgit a customer pays, ';
+    $('marginCents').nextSibling.textContent = loss ? ' compared with what the item cost.' : ' is yours to keep before overheads.';
+    $('markupCents').parentElement.firstChild.textContent = loss ? 'You sell for ' : 'You add ';
+    $('markupCents').nextSibling.textContent = loss ? ' less than every ringgit the item costs you.' : ' on top of every ringgit the item costs you.';
+
+    // Diagram: scale both bars to the larger of cost and price.
+    const scale = Math.max(cost, price) || 1;
+    const c = cost / scale * 100, p = price / scale * 100, pr = Math.abs(profit) / scale * 100;
+    if (!loss) {
+      place($('mCost'), 0, c, 'cost ' + money(cost)); place($('mProfit'), c, pr, money(profit));
+      place($('kCost'), 0, c, 'cost ' + money(cost)); place($('kProfit'), c, pr, money(profit));
+    } else {
+      // Price is below cost: the "profit" block is the shortfall at the end of the cost bar.
+      place($('mCost'), 0, p, 'price ' + money(price)); place($('mProfit'), p, pr, money(profit));
+      place($('kCost'), 0, p, 'price ' + money(price)); place($('kProfit'), p, pr, money(profit));
+    }
+    $('mProfit').style.background = $('kProfit').style.background = loss ? 'var(--loss)' : '';
+    $('mBase').style.left = '0%'; $('mBase').style.width = p + '%';
+    $('kBase').style.left = '0%'; $('kBase').style.width = c + '%';
+    $('mBase').hidden = !(price > 0); $('kBase').hidden = !(cost > 0);
+    $('mHead').textContent = Number.isFinite(margin) ? `${money(profit)} ÷ ${money(price)} = ${pct(margin)}` : '';
+    $('kHead').textContent = Number.isFinite(markup) ? `${money(profit)} ÷ ${money(cost)} = ${pct(markup)}` : '';
+
+    let note = '';
+    if (Number.isFinite(margin) && Number.isFinite(markup) && !loss && profit > 0) {
+      note = `Markup is always the bigger number when you make a profit, because cost (${money(cost)}) is smaller than price (${money(price)}). A ${pct(markup)} markup gives a ${pct(margin)} margin.`;
+    } else if (profit === 0) {
+      note = 'Cost equals price, so there is no profit: both figures are 0%.';
+    } else if (loss) {
+      note = `You are selling below cost. The red block is the ${money(-profit)} shortfall.`;
+    }
+    $('diagNote').textContent = note;
+
+    renderTable(margin);
+  }
+
+  costEl.addEventListener('input', update);
+  priceEl.addEventListener('input', update);
+  update();
+})();
+</script>
+
+</body>
+</html>
